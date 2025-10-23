@@ -1,0 +1,19 @@
+\begin{thebibliography}{1}\itemsep=-1pt
+
+\bibitem{div2k}
+Eirikur Agustsson and Radu Timofte.
+\newblock Ntire 2017 challenge on single image super-resolution: Dataset and study.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops}, pages 126--135, 2017.
+\newblock Available at: \url{https://data.vision.ee.ethz.ch/cvl/DIV2K/}.
+
+\bibitem{davis2017}
+Jordi Pont-Tuset, Federico Perazzi, Sergi Caelles, Pablo Arbeláez, Alexander Sorkine-Hornung, and Luc Van~Gool.
+\newblock The 2017 davis challenge on video object segmentation, 2017.
+\newblock Available at: \url{https://davischallenge.org/davis2017/code.html}.
+
+\bibitem{unsplash}
+Unsplash.
+\newblock Unsplash dataset, 2023.
+\newblock Available at: \url{https://github.com/unsplash/datasets}.
+
+\end{thebibliography}

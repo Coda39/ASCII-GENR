@@ -1,0 +1,144 @@
+% CVPR 2022 Paper Template
+% based on the CVPR template provided by Ming-Ming Cheng (https://github.com/MCG-NKU/CVPR_Template)
+% modified and extended by Stefan Roth (stefan.roth@NOSPAMtu-darmstadt.de)
+
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+%%%%%%%%% PAPER TYPE  - PLEASE UPDATE FOR FINAL VERSION
+%\usepackage[review]{cvpr}      % To produce the REVIEW version
+\usepackage{cvpr}              % To produce the CAMERA-READY version
+%\usepackage[pagenumbers]{cvpr} % To force page numbers, e.g. for an arXiv version
+
+% Include other packages here, before hyperref.
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+
+
+% It is strongly recommended to use hyperref, especially for the review version.
+% hyperref with option pagebackref eases the reviewers' job.
+% Please disable hyperref *only* if you encounter grave issues, e.g. with the
+% file validation for the camera-ready version.
+%
+% If you comment hyperref and then uncomment it, you should delete
+% ReviewTempalte.aux before re-running LaTeX.
+% (Or just hit 'q' on the first LaTeX run, let it finish, and you
+%  should be clear).
+\usepackage[pagebackref,breaklinks,colorlinks]{hyperref}
+
+
+% Support for easy cross-referencing
+\usepackage[capitalize]{cleveref}
+\crefname{section}{Sec.}{Secs.}
+\Crefname{section}{Section}{Sections}
+\Crefname{table}{Table}{Tables}
+\crefname{table}{Tab.}{Tabs.}
+
+
+%%%%%%%%% PAPER ID  - PLEASE UPDATE
+\def\cvprPaperID{*****} % *** Enter the CVPR Paper ID here
+\def\confName{CVPR}
+\def\confYear{2025}
+
+
+\begin{document}
+
+%%%%%%%%% TITLE - PLEASE UPDATE
+\title{Detail-Preserving ASCII Art Generation for Images and Videos}
+
+\author{Mateo Estrada\\
+University of Dexas at Dallas\\
+{\tt\small MXE210022@utdallas.edu}
+% For a paper whose authors are all at the same institution,
+% omit the following lines up until the closing ``}''.
+% Additional authors and addresses can be added with ``\and'',
+% just like the second author.
+% To save space, use either the email address or home page, not both
+\and
+Second Author\\
+Institution2\\
+First line of institution2 address\\
+{\tt\small secondauthor@i2.org}
+\and
+ThirdAuthor\\
+Institution2\\
+First line of institution2 address\\
+{\tt\small secondauthor@i2.org}
+\and
+Fourth Author\\
+Institution2\\
+First line of institution2 address\\
+{\tt\small secondauthor@i2.org}
+}
+\maketitle
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+\end{abstract}
+
+%%%%%%%%% BODY TEXT
+\section{Problem Statement}
+\label{sec:intro}
+
+Current ASCII art generation algorithms often sacrifice fine details or fail to maintain temporal consistency in video applications.
+
+Understanding this our aim will be to develop a comprehensive pipeline that addresses these limitations through algorithmic enhancements, focusing on detail preservation techniques and video-specific optimizations.
+
+
+\section{Approach}
+
+This project falls into the research-oriented category as we are developing novel algorithmic approaches to ASCII art generation with specific focus on detail preservation and extending these techniques to video processing
+
+\textbf{Phase 1: Baseline ASCII Generation}
+We begin with a foundational approach that transforms input images through grayscaling and luminance-based pixel-to-ASCII character mapping. This establishes our baseline for comparison and builds the core pipeline architecture.
+
+\textbf{Phase 2: Detail Enhancement Through Advanced Filtering}
+To improve detail preservation, we will integrate edge detection and orientation features using advanced computer vision techniques including Difference of Gaussians (DoG) filters and Sobel edge detection. These will enable orientation-aware character selection and enhanced structural preservation.
+
+\textbf{Phase 3: Video Processing Extension}
+We extend our approach to video sequences, implementing temporal consistency algorithms and motion-aware processing. Additional edge detection steps will be applied to reduce visual fatigue and improve depth perception in animated ASCII output.
+
+\textbf{Phase 4: Performance Optimization}
+The final phase focuses on computational efficiency through GPU parallelization, memory optimization, and algorithmic refinements. We will systematically document performance improvements and their impact on output quality.
+
+\section{Data}
+
+Our evaluation will utilize multiple datasets to comprehensively assess performance:
+
+\subsection{Image Datasets:}
+
+DIV2K High-Resolution Dataset \cite{div2k}: Contains diverse high-quality images for testing detail preservation capabilities.
+
+The Unsplash Dataset Lite \cite{unsplash}: Contains various images sourced from a high amount of contexts and sources to test various contexts.
+
+\subsection{Video Datasets:}
+DAVIS Video Segmentation Dataset \cite{davis2017}: Provides annotated video sequences for testing temporal consistency
+
+
+Real-time Camera Stream: Live webcam input for testing real-time processing capabilities
+
+\section{Evaluation}
+
+We will employ quantitative metrics to evaluate our approach:
+
+\subsection{Quantitative Metrics:}
+
+\textbf{Structural Similarity Index (SSIM):} Measures structural preservation between original and ASCII-converted images
+
+\textbf{Edge Preservation Ratio:} Custom metric comparing edge detection results between original and ASCII images using Canny edge detection
+
+\textbf{Processing Time per Frame:} Computational efficiency measurement for both image and video processing
+
+\textbf{Temporal Consistency Score:} For videos, measures frame-to-frame character stability using normalized cross-correlation
+
+\textbf{Detail Retention Index:} Novel metric quantifying fine detail preservation through local variance analysis
+
+
+%%%%%%%%% REFERENCES
+{\small
+\bibliographystyle{ieee_fullname}
+\bibliography{egbib}
+}
+
+\end{document}
