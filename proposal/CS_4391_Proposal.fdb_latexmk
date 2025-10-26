@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex CS_4391_Proposal"] 1761242379.15144 "CS_4391_Proposal.aux" "CS_4391_Proposal.bbl" "CS_4391_Proposal" 1761242379.99175 0
+["bibtex CS_4391_Proposal"] 1761369528.4044 "CS_4391_Proposal.aux" "CS_4391_Proposal.bbl" "CS_4391_Proposal" 1761369549.27273 0
   "./egbib.bib" 1761241631.12126 1242 7439449f83de09de9371874e5329ad03 ""
   "./ieee_fullname.bst" 1761242370.7896 19905 72b73f4cb1c51eaa1a7af8ecad2b6bfb ""
-  "CS_4391_Proposal.aux" 1761242379.81052 1535 7e00428a4c44206740b961eade26ba0b "pdflatex"
+  "CS_4391_Proposal.aux" 1761369549.10421 1535 d863a4492f8866cd9b16bd5f1b4806f4 "pdflatex"
   (generated)
   "CS_4391_Proposal.bbl"
   "CS_4391_Proposal.blg"
   (rewritten before read)
-["pdflatex"] 1761242379.21581 "CS_4391_Proposal.tex" "CS_4391_Proposal.pdf" "CS_4391_Proposal" 1761242379.99184 0
+["pdflatex"] 1761369548.37699 "CS_4391_Proposal.tex" "CS_4391_Proposal.pdf" "CS_4391_Proposal" 1761369549.27282 0
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2024/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/adobe/courier/pcrr7t.tfm" 1136768653 960 379cc0019370a9e0208a0a3f949f847a ""
@@ -120,11 +120,11 @@
   "/usr/local/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1710972608.01255 5467645 128b85b7cde5f5edc5cb7f1dd7ff8736 ""
   "/usr/local/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt" 1710972530 8221436 ee1de63162af5f116bcdfb21467960af ""
   "/usr/local/texlive/2024/texmf.cnf" 1710266656 577 e590dabc9e28c5b61546e15f63eebcdf ""
-  "CS_4391_Proposal.aux" 1761242379.81052 1535 7e00428a4c44206740b961eade26ba0b "pdflatex"
-  "CS_4391_Proposal.bbl" 1761242379.21395 818 fe4b33549426412cf689e0772b98f2e0 "bibtex CS_4391_Proposal"
-  "CS_4391_Proposal.brf" 1761242379.81141 139 7c2c04874285144d3ce07f0c491154dc "pdflatex"
-  "CS_4391_Proposal.out" 1761242379.81125 896 4b3fbb1f025df61ea9090ab53b6404c5 "pdflatex"
-  "CS_4391_Proposal.tex" 1761242376.65221 5755 13d89997536460741172fa2e4b273d45 ""
+  "CS_4391_Proposal.aux" 1761369549.10421 1535 d863a4492f8866cd9b16bd5f1b4806f4 "pdflatex"
+  "CS_4391_Proposal.bbl" 1761369528.49526 818 fe4b33549426412cf689e0772b98f2e0 "bibtex CS_4391_Proposal"
+  "CS_4391_Proposal.brf" 1761369549.10521 139 7c2c04874285144d3ce07f0c491154dc "pdflatex"
+  "CS_4391_Proposal.out" 1761369549.10511 896 4b3fbb1f025df61ea9090ab53b6404c5 "pdflatex"
+  "CS_4391_Proposal.tex" 1761369547.91462 5508 0191663dad79c4ec99ad13a81e6b952e ""
   "cvpr.sty" 1760371818.43857 22664 c306dde773b6e19eab7f3042377bbe93 ""
   (generated)
   "CS_4391_Proposal.aux"
