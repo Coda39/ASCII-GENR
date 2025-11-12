@@ -1,0 +1,5 @@
+numpy
+scikit-image
+imageio
+imageio-ffmpeg
+pytest
