@@ -1,0 +1,20 @@
+Week 1: 
+  - Baseline ASCII Generation 
+    - Luminosity vs Template matching 
+
+  - Evaluation Pipeline
+    - Structural Similarity Index (SSIM): Measures structural preservation between original and ASCII-converted images 
+    - Edge Preservation Ratio: Custom metric comparing edge detection results between original and ASCII images using Canny edge detection 
+    - Temporal Consistency Score: For videos, measures frame-to-frame character stability using normalized cross correlation 
+      - Detail Retention Index: Novel metric quantifying fine detail preservation through local variance analysis 
+
+    - Processing Time per Frame: Computational efficiency measurement for both image and video processing 
+
+
+Week 2:
+
+  - Video Processing Pipeline 
+
+Week 3: 
+  - Performance Optimization
+  - Report and presentation prep
