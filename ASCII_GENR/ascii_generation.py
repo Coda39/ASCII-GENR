@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
 import time
+import argparse
 from multiprocessing import Pool, cpu_count
 from functools import partial
+from PIL import Image, ImageDraw, ImageFont
 
 
 def pixilate_image(image_path, block_size=8, contrast_factor=1.2):
@@ -60,13 +62,48 @@ def brightness_to_ascii(brightness_array, ascii_chars):
     return ascii_array
 
 
-def print_ascii_art(ascii_array):
-    """Print ASCII art directly to terminal"""
+def ansi_color_code(r, g, b):
+    """
+    Generate ANSI 24-bit RGB color escape code for foreground text.
+
+    Args:
+        r, g, b: RGB values (0-255)
+
+    Returns:
+        ANSI escape code string
+    """
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def ansi_reset():
+    """Return ANSI reset code to clear formatting."""
+    return "\033[0m"
+
+
+def print_ascii_art(ascii_array, color_array=None):
+    """
+    Print ASCII art directly to terminal.
+
+    Args:
+        ascii_array: 2D array of ASCII characters
+        color_array: Optional 2D array of RGB tuples for colored output
+    """
     height, width = ascii_array.shape
     print(f"\nASCII Art ({height}x{width} characters):\n")
 
-    for row in range(height):
-        print("".join(ascii_array[row, :]))
+    if color_array is not None:
+        # Print with ANSI colors
+        for row in range(height):
+            line = ""
+            for col in range(width):
+                r, g, b = color_array[row, col]
+                char = ascii_array[row, col]
+                line += ansi_color_code(r, g, b) + char + ansi_reset()
+            print(line)
+    else:
+        # Print monochrome
+        for row in range(height):
+            print("".join(ascii_array[row, :]))
 
     print(f"\n")
 
@@ -398,6 +435,52 @@ def select_ascii_character_shader_style(
         return " "
 
 
+def extract_tile_colors(image, tile_size=8):
+    """
+    Extract color from center pixel of each tile.
+
+    Args:
+        image: BGR input image
+        tile_size: Size of ASCII character tiles
+
+    Returns:
+        color_array: 2D array of RGB tuples (tile_rows x tile_cols)
+    """
+    if len(image.shape) != 3:
+        # Grayscale image - return gray colors
+        height, width = image.shape
+        tile_rows = height // tile_size
+        tile_cols = width // tile_size
+
+        # Sample center of each tile
+        color_array = np.zeros((tile_rows, tile_cols, 3), dtype=np.uint8)
+        for tr in range(tile_rows):
+            for tc in range(tile_cols):
+                # Get center pixel of tile
+                center_y = tr * tile_size + tile_size // 2
+                center_x = tc * tile_size + tile_size // 2
+                gray_val = image[center_y, center_x]
+                color_array[tr, tc] = [gray_val, gray_val, gray_val]
+    else:
+        # Color image
+        height, width = image.shape[:2]
+        tile_rows = height // tile_size
+        tile_cols = width // tile_size
+
+        # Sample center of each tile
+        color_array = np.zeros((tile_rows, tile_cols, 3), dtype=np.uint8)
+        for tr in range(tile_rows):
+            for tc in range(tile_cols):
+                # Get center pixel of tile
+                center_y = tr * tile_size + tile_size // 2
+                center_x = tc * tile_size + tile_size // 2
+                # OpenCV uses BGR, convert to RGB
+                bgr = image[center_y, center_x]
+                color_array[tr, tc] = [bgr[2], bgr[1], bgr[0]]  # BGR to RGB
+
+    return color_array
+
+
 def create_ascii_art_shader_style(
     image,
     tile_size=16,
@@ -413,6 +496,7 @@ def create_ascii_art_shader_style(
     debug_mode=None,
     parallel=True,
     verbose=False,
+    extract_colors=False,
 ):
     """
     Main function that replicates the Unity shader pipeline.
@@ -432,9 +516,11 @@ def create_ascii_art_shader_style(
         debug_mode: Visualization mode ('dog', 'sobel', 'directions', 'tiles', None)
         parallel: Use multiprocessing for tile processing
         verbose: Print timing information
+        extract_colors: Extract RGB colors for colored ASCII output
 
     Returns:
         ascii_array: 2D array of ASCII characters
+        color_array: 2D array of RGB tuples (if extract_colors=True, else None)
         debug_image: Debug visualization (if debug_mode is set)
         timings: Dictionary of timing information (if verbose=True)
     """
@@ -581,6 +667,13 @@ def create_ascii_art_shader_style(
     if debug_mode:
         timings["debug_visualization"] = time.time() - t0
 
+    # Step 8: Extract colors (if requested)
+    color_array = None
+    if extract_colors:
+        t0 = time.time()
+        color_array = extract_tile_colors(image, tile_size)
+        timings["color_extraction"] = time.time() - t0
+
     timings["total"] = time.time() - start_total
 
     if verbose:
@@ -602,6 +695,10 @@ def create_ascii_art_shader_style(
             f"Luminance downscale:     {timings['luminance_downscale'] * 1000:7.2f} ms"
         )
         print(f"ASCII generation:        {timings['ascii_generation'] * 1000:7.2f} ms")
+        if "color_extraction" in timings:
+            print(
+                f"Color extraction:        {timings['color_extraction'] * 1000:7.2f} ms"
+            )
         if "debug_visualization" in timings:
             print(
                 f"Debug visualization:     {timings['debug_visualization'] * 1000:7.2f} ms"
@@ -612,20 +709,133 @@ def create_ascii_art_shader_style(
         )
         print()
 
-    return ascii_array, debug_image, timings
+    return ascii_array, color_array, debug_image, timings
+
+
+def render_ascii_to_image(
+    ascii_array, color_array=None, font_size=10, output_path="ascii_art_rendered.png"
+):
+    """
+    Render ASCII art to a rasterized image file.
+
+    Args:
+        ascii_array: 2D array of ASCII characters
+        color_array: Optional 2D array of RGB tuples for colored output
+        font_size: Font size for rendering (default: 10)
+        output_path: Path to save the rendered image
+
+    Returns:
+        PIL Image object
+    """
+    height, width = ascii_array.shape
+
+    # Try to use a monospace font for best results
+    try:
+        # Try common monospace fonts
+        font = ImageFont.truetype("/System/Library/Fonts/Courier.dfont", font_size)
+    except:
+        try:
+            font = ImageFont.truetype("Courier New", font_size)
+        except:
+            try:
+                font = ImageFont.truetype("Consolas", font_size)
+            except:
+                # Fall back to default font
+                font = ImageFont.load_default()
+
+    # Calculate character dimensions using a test character
+    test_bbox = font.getbbox("@")
+    char_width = test_bbox[2] - test_bbox[0]
+    char_height = test_bbox[3] - test_bbox[1]
+
+    # Create image with proper dimensions
+    img_width = width * char_width
+    img_height = height * char_height
+
+    # Create image with black background
+    if color_array is not None:
+        # Color mode
+        img = Image.new("RGB", (img_width, img_height), color=(0, 0, 0))
+    else:
+        # Monochrome mode with white text on black background
+        img = Image.new("RGB", (img_width, img_height), color=(0, 0, 0))
+
+    draw = ImageDraw.Draw(img)
+
+    # Render each character
+    for row in range(height):
+        for col in range(width):
+            char = ascii_array[row, col]
+            x = col * char_width
+            y = row * char_height
+
+            if color_array is not None:
+                # Use the color from color_array
+                r, g, b = color_array[row, col]
+                color = (int(r), int(g), int(b))
+            else:
+                # White text for monochrome
+                color = (255, 255, 255)
+
+            draw.text((x, y), char, font=font, fill=color)
+
+    # Save the image
+    img.save(output_path)
+    print(f"Saved {output_path}")
+
+    return img
 
 
 def main():
-    image_path = "image.jpg"
+    parser = argparse.ArgumentParser(
+        description="Generate ASCII art from images with edge detection and optional color support"
+    )
+    parser.add_argument("image_path", help="Path to input image")
+    parser.add_argument(
+        "--color",
+        action="store_true",
+        help="Enable colored ASCII output (default: monochrome)",
+    )
+    parser.add_argument(
+        "--tile-size", type=int, default=8, help="ASCII character tile size (default: 8)"
+    )
+    parser.add_argument(
+        "--edge-threshold",
+        type=int,
+        default=12,
+        help="Minimum edge pixels for edge detection (default: 12)",
+    )
+    parser.add_argument(
+        "--no-debug",
+        action="store_true",
+        help="Skip generating debug visualizations",
+    )
+    parser.add_argument(
+        "--render",
+        action="store_true",
+        help="Generate rasterized image output of ASCII art (default: text only)",
+    )
+    parser.add_argument(
+        "--font-size",
+        type=int,
+        default=20,
+        help="Font size for rendered image in pixels (default: 20)",
+    )
+
+    args = parser.parse_args()
 
     # Load image
-    original_image = cv2.imread(image_path)
+    original_image = cv2.imread(args.image_path)
     if original_image is None:
-        print(f"Error: Could not load image at {image_path}")
+        print(f"Error: Could not load image at {args.image_path}")
         return
 
     print("Processing image with shader-style algorithm...")
     print(f"Original image size: {original_image.shape[1]}x{original_image.shape[0]}")
+    if args.color:
+        print("Mode: COLOR")
+    else:
+        print("Mode: MONOCHROME")
 
     # Downscale if image is too large (above 1920x1080)
     # Use a more reasonable max size to preserve detail
@@ -651,7 +861,7 @@ def main():
     print(f"Available CPU cores: {cpu_count()}")
 
     # Parameters matching Unity shader defaults
-    tile_size = 8
+    tile_size = args.tile_size
     sigma = 2.0
     sigma_scale = 1.6
     tau = 1.0
@@ -664,14 +874,13 @@ def main():
     #   - Very selective (mostly fill): 48-60 (75-95% of pixels must be edge)
     #   - Balanced: 32-40 (50-60% of pixels must be edge)
     #   - Edge-heavy: 16-24 (25-40% of pixels must be edge)
-    edge_threshold = 12
+    edge_threshold = args.edge_threshold
 
     exposure = 1.0
     attenuation = 1.0
 
     # Generate ASCII art with parallelization and timing
-    print("\n--- WITH PARALLELIZATION ---")
-    ascii_array, _, timings_parallel = create_ascii_art_shader_style(
+    ascii_array, color_array, _, timings_parallel = create_ascii_art_shader_style(
         original_image,
         tile_size=tile_size,
         sigma=sigma,
@@ -686,41 +895,72 @@ def main():
         debug_mode=None,
         parallel=True,
         verbose=True,
+        extract_colors=args.color,
     )
 
     # Print to terminal
-    print_ascii_art(ascii_array)
+    print_ascii_art(ascii_array, color_array)
 
     # Save text version
-    print("Saving ASCII art text...")
+    print("\nSaving ASCII art text...")
     ascii_text = "\n".join("".join(row) for row in ascii_array)
     with open("ascii_art.txt", "w", encoding="utf-8") as f:
         f.write(ascii_text)
-    print(f"Saved ascii_art.txt")
+    print(f"Saved ascii_art.txt (plain text)")
+
+    # Save colored version if color mode is enabled
+    if args.color and color_array is not None:
+        colored_lines = []
+        for row in range(ascii_array.shape[0]):
+            line = ""
+            for col in range(ascii_array.shape[1]):
+                r, g, b = color_array[row, col]
+                char = ascii_array[row, col]
+                line += ansi_color_code(r, g, b) + char + ansi_reset()
+            colored_lines.append(line)
+
+        colored_text = "\n".join(colored_lines)
+        with open("ascii_art_color.txt", "w", encoding="utf-8") as f:
+            f.write(colored_text)
+        print(f"Saved ascii_art_color.txt (ANSI colored)")
+
+    # Generate rasterized image if requested
+    if args.render:
+        print("\nGenerating rasterized image...")
+        if args.color and color_array is not None:
+            render_ascii_to_image(
+                ascii_array, color_array, font_size=args.font_size, output_path="ascii_art_rendered.png"
+            )
+        else:
+            render_ascii_to_image(
+                ascii_array, None, font_size=args.font_size, output_path="ascii_art_rendered.png"
+            )
 
     # Generate debug visualizations
-    print("\nGenerating debug visualizations...")
+    if not args.no_debug:
+        print("\nGenerating debug visualizations...")
 
-    debug_modes = ["dog", "sobel", "directions", "tiles"]
-    for mode in debug_modes:
-        _, debug_img, _ = create_ascii_art_shader_style(
-            original_image,
-            tile_size=tile_size,
-            sigma=sigma,
-            sigma_scale=sigma_scale,
-            tau=tau,
-            dog_threshold=dog_threshold,
-            edge_threshold=edge_threshold,
-            exposure=exposure,
-            attenuation=attenuation,
-            debug_mode=mode,
-            parallel=True,
-            verbose=False,
-        )
+        debug_modes = ["dog", "sobel", "directions", "tiles"]
+        for mode in debug_modes:
+            _, _, debug_img, _ = create_ascii_art_shader_style(
+                original_image,
+                tile_size=tile_size,
+                sigma=sigma,
+                sigma_scale=sigma_scale,
+                tau=tau,
+                dog_threshold=dog_threshold,
+                edge_threshold=edge_threshold,
+                exposure=exposure,
+                attenuation=attenuation,
+                debug_mode=mode,
+                parallel=True,
+                verbose=False,
+                extract_colors=False,
+            )
 
-        if debug_img is not None:
-            cv2.imwrite(f"debug_{mode}.png", debug_img)
-            print(f"Saved debug_{mode}.png")
+            if debug_img is not None:
+                cv2.imwrite(f"debug_{mode}.png", debug_img)
+                print(f"Saved debug_{mode}.png")
 
     print("\nDone!")
 
