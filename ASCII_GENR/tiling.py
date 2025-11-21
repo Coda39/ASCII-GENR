@@ -1,4 +1,5 @@
 import numpy as np
+from performance import GlobalTimer
 from multiprocessing import Pool, cpu_count
 
 def _process_tile(args):
@@ -23,6 +24,7 @@ def _process_tile(args):
 
     return (tr, tc, common_edge_index)
 
+@GlobalTimer.time
 def tile_based_edge_consensus(direction_map, tile_size=8, edge_threshold=8, parallel=True):
     """
     Apply tile-based voting for dominant edge direction.
@@ -42,7 +44,7 @@ def tile_based_edge_consensus(direction_map, tile_size=8, edge_threshold=8, para
                 ]
                 tile_args.append((tr, tc, tile, edge_threshold))
 
-        num_processes = min(cpu_count(), 8)
+        num_processes = max(1, cpu_count() - 1)
         with Pool(processes=num_processes) as pool:
             results = pool.map(_process_tile, tile_args)
 
@@ -65,30 +67,3 @@ def tile_based_edge_consensus(direction_map, tile_size=8, edge_threshold=8, para
         np.repeat(tile_directions, tile_size, axis=0), tile_size, axis=1
     )
     return tile_direction_map[:height, :width]
-
-def extract_tile_colors(image, tile_size=8):
-    """
-    Extract color from center pixel of each tile.
-    """
-    height, width = image.shape[:2]
-    tile_rows = height // tile_size
-    tile_cols = width // tile_size
-
-    # Handle grayscale vs BGR
-    is_color = len(image.shape) == 3
-    channels = 3
-    color_array = np.zeros((tile_rows, tile_cols, channels), dtype=np.uint8)
-
-    for tr in range(tile_rows):
-        for tc in range(tile_cols):
-            center_y = tr * tile_size + tile_size // 2
-            center_x = tc * tile_size + tile_size // 2
-
-            if is_color:
-                bgr = image[center_y, center_x]
-                color_array[tr, tc] = [bgr[2], bgr[1], bgr[0]]  # BGR to RGB
-            else:
-                val = image[center_y, center_x]
-                color_array[tr, tc] = [val, val, val]
-
-    return color_array

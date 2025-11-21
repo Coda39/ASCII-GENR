@@ -3,26 +3,32 @@ import string
 import numpy as np
 import cv2
 from helpers import calcCentroids
+from performance import GlobalTimer
 
 class TemplateGenerator:
-    def __init__(self, font_file=None, font_size=8, patch_w=8, patch_h=8, save=True):
+    def __init__(self, font_file=None, font_size=8, patch_w=8, patch_h=8, save=True, char_set=' .*:o&8?'):
         self.FONT_FILE = font_file
         self.FONT_SIZE = font_size
         self.PATCH_W, self.PATCH_H = patch_w, patch_h
         self.SAVE=save
+        self.char_set = char_set
 
+    @GlobalTimer.time
     def generate(self):
 
         FONT_FILE = self.FONT_FILE
         FONT_SIZE = self.FONT_SIZE
         PATCH_W, PATCH_H = self.PATCH_W, self.PATCH_H
-        CHARS = string.printable[0:95]
+        #CHARS = string.printable[0:95] + '█'
+        CHARS = "|-/\\" + str(self.char_set) # must have at least the edge characters
         TEMP_CANVAS_SIZE = 100
         template_library = []
         centroids = []
 
+
         try:
             font = ImageFont.truetype("templates/font.ttf", FONT_SIZE)
+            print(f"Generating font with size {FONT_SIZE}")
         except IOError:
             print(f"Could not load font '{FONT_FILE}'. Using default.")
             font = ImageFont.load_default()

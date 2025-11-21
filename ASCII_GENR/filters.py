@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
+from performance import GlobalTimer
 
+@GlobalTimer.time
 def difference_of_gaussians(image, sigma=2.0, sigma_scale=1.6, tau=1.0, threshold=0.005):
     """
     Apply Difference of Gaussians (DoG) filter.
@@ -21,6 +23,7 @@ def difference_of_gaussians(image, sigma=2.0, sigma_scale=1.6, tau=1.0, threshol
 
     return edges
 
+@GlobalTimer.time
 def sobel_edge_detection_shader_style(image):
     """
     Apply Sobel edge detection matching the Unity shader's separable approach.
@@ -45,6 +48,7 @@ def sobel_edge_detection_shader_style(image):
 
     return magnitude_normalized, theta, mask
 
+@GlobalTimer.time
 def quantize_edge_direction(theta, mask):
     """
     Quantize edge angles to 4 discrete directions.
