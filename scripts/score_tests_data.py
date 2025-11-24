@@ -18,27 +18,19 @@ def main():
         print("Need at least two images in tests/data/ to compute scores")
         return 2
     o, a = imgs[0], imgs[1]
-    print("Using files:", o, a)
-    img_o = imageio.v2.imread(str(o))
-    img_a = imageio.v2.imread(str(a))
-    # crop to common top-left size if needed
-    mh = min(img_o.shape[0], img_a.shape[0])
-    mw = min(img_o.shape[1], img_a.shape[1])
-    if img_o.ndim == 3:
-        img_o = img_o[:mh, :mw, ...]
-    else:
-        img_o = img_o[:mh, :mw]
-    if img_a.ndim == 3:
-        img_a = img_a[:mh, :mw, ...]
-    else:
-        img_a = img_a[:mh, :mw]
-
-    s = structural_similarity_score(img_o, img_a)
-    e = edge_preservation_ratio(img_o, img_a)
-    d = detail_retention_index(img_o, img_a)
-    print(f"SSIM = {s:.6f}")
+    print("Using files:", o.name, "vs", a.name)
+    print()
+    
+    # Metrics now handle size differences automatically
+    e = edge_preservation_ratio(str(o), str(a))
+    d = detail_retention_index(str(o), str(a))
+    s = structural_similarity_score(str(o), str(a))
+    
+    print("ASCII Art Quality Metrics")
+    print("=" * 40)
     print(f"Edge Preservation Ratio = {e:.6f}")
-    print(f"Detail Retention Index = {d:.6f}")
+    print(f"Detail Retention Index  = {d:.6f}")
+    print(f"SSIM                    = {s:.6f}")
     return 0
 
 

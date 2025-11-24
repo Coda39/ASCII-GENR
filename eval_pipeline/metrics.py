@@ -1,10 +1,12 @@
 """Metrics for evaluating ASCII conversion quality.
 
-Implemented metrics:
-- structural_similarity_score: SSIM using scikit-image.
-- edge_preservation_ratio: Canny edges + dilation to compute preserved edge ratio.
-- temporal_consistency_score: average normalized cross-correlation between consecutive frames.
-- detail_retention_index: local variance based detail retention index.
+Primary metrics for ASCII art evaluation:
+- edge_preservation_ratio: Measures how well edges are preserved (most relevant for ASCII)
+- detail_retention_index: Measures local variance/detail retention (most relevant for ASCII)
+
+Additional metrics:
+- structural_similarity_score: SSIM (less meaningful for ASCII art transformation)
+- temporal_consistency_score: For video sequences
 
 The functions accept either numpy arrays (H,W[,C]) or file paths.
 """
@@ -17,6 +19,7 @@ from skimage.metrics import structural_similarity as _ssim
 from skimage.color import rgb2gray
 from skimage.feature import canny
 from skimage.morphology import disk, dilation
+from skimage.transform import resize
 
 
 def load_image(img: Union[str, np.ndarray]) -> np.ndarray:
@@ -46,6 +49,22 @@ def _to_gray(img: Union[str, np.ndarray]) -> np.ndarray:
     return im
 
 
+def _align_shapes(a: np.ndarray, b: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Resize images to match dimensions (upscales smaller to match larger)."""
+    if a.shape == b.shape:
+        return a, b
+    
+    target_h = max(a.shape[0], b.shape[0])
+    target_w = max(a.shape[1], b.shape[1])
+    
+    if a.shape != (target_h, target_w):
+        a = resize(a, (target_h, target_w), preserve_range=True, anti_aliasing=True)
+    if b.shape != (target_h, target_w):
+        b = resize(b, (target_h, target_w), preserve_range=True, anti_aliasing=True)
+    
+    return a, b
+
+
 def structural_similarity_score(
     original: Union[str, np.ndarray],
     ascii_img: Union[str, np.ndarray],
@@ -53,14 +72,14 @@ def structural_similarity_score(
 ) -> float:
     """Compute SSIM between original and ASCII-converted image.
 
+    Note: SSIM is less meaningful for ASCII art due to fundamental structural changes.
+    Consider using edge_preservation_ratio and detail_retention_index instead.
+
     Both inputs may be file paths or numpy arrays. Returns SSIM in [-1,1].
     """
     a = _to_gray(original)
     b = _to_gray(ascii_img)
-    # ensure same shape
-    if a.shape != b.shape:
-        raise ValueError("Original and ASCII images must have the same shape")
-    # structural_similarity expects data_range (max-min). We use 1.0 for normalized floats.
+    a, b = _align_shapes(a, b)
     score = _ssim(a, b, data_range=1.0, **ssim_kwargs)
     return float(score)
 
@@ -76,11 +95,20 @@ def edge_preservation_ratio(
     EPR = (# of original edge pixels that have a matching ascii edge nearby) / (# original edge pixels)
 
     Uses Canny edge detector. A small dilation is applied to ASCII edges to allow for small shifts.
+    
+    Args:
+        original: Original image (path or array)
+        ascii_img: ASCII-converted image (path or array)
+        sigma: Gaussian sigma for Canny edge detection
+        dilate_radius: Dilation radius for matching nearby edges
+    
+    Returns:
+        Float in [0,1] where 1.0 means perfect edge preservation
     """
     a = _to_gray(original)
     b = _to_gray(ascii_img)
-    if a.shape != b.shape:
-        raise ValueError("Original and ASCII images must have the same shape")
+    a, b = _align_shapes(a, b)
+    
     edges_a = canny(a, sigma=sigma)
     edges_b = canny(b, sigma=sigma)
     # dilate ascii edges
@@ -148,12 +176,22 @@ def detail_retention_index(
     """Compute Detail Retention Index (DRI) via local variance ratio.
 
     DRI = sum(patch_variance_ascii) / (sum(patch_variance_original) + eps)
-    Higher values indicate more detail preserved (1.0 would indicate equal total variance).
+    
+    Values close to 1.0 indicate equal detail/variance. Values > 1.0 suggest the ASCII
+    version has more local variation (often due to character patterns).
+    
+    Args:
+        original: Original image (path or array)
+        ascii_img: ASCII-converted image (path or array)
+        patch_size: Size of patches for computing local variance
+        eps: Small constant to avoid division by zero
+    
+    Returns:
+        Float >= 0, typically in range [0, 5] for ASCII art
     """
     a = _to_gray(original)
     b = _to_gray(ascii_img)
-    if a.shape != b.shape:
-        raise ValueError("Original and ASCII images must have the same shape")
+    a, b = _align_shapes(a, b)
     H, W = a.shape
     # pad to multiple of patch_size
     pad_h = (patch_size - (H % patch_size)) % patch_size

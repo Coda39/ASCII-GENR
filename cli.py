@@ -2,10 +2,10 @@
 import argparse
 from pathlib import Path
 from eval_pipeline import (
-    structural_similarity_score,
     edge_preservation_ratio,
-    temporal_consistency_score,
     detail_retention_index,
+    structural_similarity_score,
+    temporal_consistency_score,
     read_video_frames,
 )
 
@@ -36,19 +36,26 @@ def main():
         if not common:
             print("No common files found in directories")
             return
+        print(f"{'Filename':<30} {'EdgePres':>10} {'DRI':>10} {'SSIM':>10}")
+        print("-" * 62)
         for name in common:
             o = str(ofiles[name])
             a = str(afiles[name])
-            s = structural_similarity_score(o, a)
             e = edge_preservation_ratio(o, a)
             d = detail_retention_index(o, a)
-            print(f"{name}: SSIM={s:.4f}, EdgePres={e:.4f}, DRI={d:.4f}")
+            s = structural_similarity_score(o, a)
+            print(f"{name:<30} {e:>10.4f} {d:>10.4f} {s:>10.4f}")
         return
     # else treat as files
-    s = structural_similarity_score(str(orig), str(asc))
     e = edge_preservation_ratio(str(orig), str(asc))
     d = detail_retention_index(str(orig), str(asc))
-    print(f"SSIM={s:.4f}\nEdgePres={e:.4f}\nDRI={d:.4f}")
+    s = structural_similarity_score(str(orig), str(asc))
+    
+    print("ASCII Art Quality Metrics")
+    print("=" * 50)
+    print(f"Edge Preservation Ratio: {e:.4f} ")
+    print(f"Detail Retention Index:  {d:.4f} ")
+    print(f"SSIM Score:              {s:.4f}")
 
 
 if __name__ == "__main__":
