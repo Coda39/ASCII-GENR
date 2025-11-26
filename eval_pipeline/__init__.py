@@ -6,6 +6,7 @@ from .metrics import (
     temporal_consistency_score,
     load_image,
     read_video_frames,
+    evaluate_video_quality,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "temporal_consistency_score",
     "load_image",
     "read_video_frames",
+    "evaluate_video_quality",
 ]

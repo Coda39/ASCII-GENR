@@ -225,3 +225,98 @@ def read_video_frames(path: str, max_frames: Optional[int] = None) -> List[np.nd
         frames.append(fr)
     r.close()
     return frames
+
+
+def evaluate_video_quality(
+    original_video: Union[str, List[np.ndarray]],
+    ascii_video: Union[str, List[np.ndarray]],
+    max_frames: Optional[int] = None,
+    sample_rate: int = 1,
+    progress_callback=None,
+    status_callback=None,
+) -> dict:
+    """Evaluate ASCII video conversion quality across all frames.
+    
+    Computes frame-by-frame metrics and aggregates them, plus temporal consistency.
+    
+    Args:
+        original_video: Path to original video or list of frames
+        ascii_video: Path to ASCII-converted video or list of frames
+        max_frames: Maximum number of frames to evaluate (None = all frames)
+        sample_rate: Evaluate every Nth frame (1 = every frame, 2 = every other frame)
+        progress_callback: Optional callback function(current, total) for progress updates
+        status_callback: Optional callback function(message) for status updates
+    
+    Returns:
+        Dictionary with mean/std of EdgePres, DRI, SSIM, plus temporal consistency scores
+    """
+    # Load frames
+    if isinstance(original_video, str):
+        o_frames = read_video_frames(original_video, max_frames)
+    else:
+        o_frames = original_video[:max_frames] if max_frames else original_video
+    
+    if isinstance(ascii_video, str):
+        a_frames = read_video_frames(ascii_video, max_frames)
+    else:
+        a_frames = ascii_video[:max_frames] if max_frames else ascii_video
+    
+    # Sample frames if needed
+    o_frames = o_frames[::sample_rate]
+    a_frames = a_frames[::sample_rate]
+    
+    if len(o_frames) != len(a_frames):
+        raise ValueError(f"Frame count mismatch: {len(o_frames)} vs {len(a_frames)}")
+    
+    if len(o_frames) == 0:
+        raise ValueError("No frames to evaluate")
+    
+    # Compute per-frame metrics
+    edge_scores = []
+    dri_scores = []
+    ssim_scores = []
+    
+    total_frames = len(o_frames)
+    for idx, (o_frame, a_frame) in enumerate(zip(o_frames, a_frames)):
+        edge_scores.append(edge_preservation_ratio(o_frame, a_frame))
+        dri_scores.append(detail_retention_index(o_frame, a_frame))
+        ssim_scores.append(structural_similarity_score(o_frame, a_frame))
+        
+        if progress_callback:
+            progress_callback(idx + 1, total_frames)
+    
+    # Compute temporal consistency
+    if status_callback:
+        status_callback("Computing temporal consistency for original video...")
+    temporal_orig = temporal_consistency_score(o_frames)
+    
+    if status_callback:
+        status_callback("Computing temporal consistency for ASCII video...")
+    temporal_ascii = temporal_consistency_score(a_frames)
+    
+    return {
+        "num_frames": len(o_frames),
+        "edge_preservation": {
+            "mean": float(np.mean(edge_scores)),
+            "std": float(np.std(edge_scores)),
+            "min": float(np.min(edge_scores)),
+            "max": float(np.max(edge_scores)),
+        },
+        "detail_retention": {
+            "mean": float(np.mean(dri_scores)),
+            "std": float(np.std(dri_scores)),
+            "min": float(np.min(dri_scores)),
+            "max": float(np.max(dri_scores)),
+        },
+        "ssim": {
+            "mean": float(np.mean(ssim_scores)),
+            "std": float(np.std(ssim_scores)),
+            "min": float(np.min(ssim_scores)),
+            "max": float(np.max(ssim_scores)),
+        },
+        "temporal_consistency": {
+            "original": temporal_orig,
+            "ascii": temporal_ascii,
+            "degradation": temporal_orig - temporal_ascii,
+        },
+    }
