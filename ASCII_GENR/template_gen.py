@@ -19,11 +19,10 @@ class TemplateGenerator:
         FONT_FILE = self.FONT_FILE
         FONT_SIZE = self.FONT_SIZE
         PATCH_W, PATCH_H = self.PATCH_W, self.PATCH_H
-        #CHARS = string.printable[0:95] + '█'
-        CHARS = "|-/\\" + str(self.char_set) # must have at least the edge characters
+        CHARS = "".join(set('|-/\\') | self.char_set) # must have at least the edge characters
         TEMP_CANVAS_SIZE = 100
-        template_library = []
-        centroids = []
+        template_library = {}
+        centroids = {}
 
 
         try:
@@ -67,15 +66,13 @@ class TemplateGenerator:
 
             centroid = calcCentroids(template)
 
-            centroids.append(centroid)
-            template_library.append(template)
+            centroids[char] = centroid
+            template_library[char] = template
 
             if self.SAVE:
                 final_template.save(f"./templates/template_{ord(char)}.png")
 
-        library_dict = dict(zip(CHARS, template_library))
-        centroid_dict = dict(zip(CHARS, centroids))
 
         print(f"Template generation done.")
 
-        return library_dict, centroid_dict
+        return template_library, centroids

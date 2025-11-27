@@ -47,7 +47,7 @@ def _process_row(args):
 
 
         # Iterate through all templates
-        for char, in char_set:
+        for char in char_set:
             template = template_library[char]
             tcx, tcy = template_centroids[char]
 

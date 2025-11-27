@@ -2,29 +2,24 @@ import os
 import cv2
 import numpy as np
 from performance import GlobalTimer
+from helpers import get_file_type
 
 class Preprocessor:
-    def __init__(self, input_path, max_dim=1920, patch_size=8):
-        self.IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
-        self.VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'}
+    def __init__(self, input_path, max_dim=1280, patch_size=8, denoise=True):
         self.max_dim = max_dim
         self.patch_size = patch_size
         self.input_path = input_path
+
+        # For input smoothing
+        self.denoise = denoise
 
     @GlobalTimer.time
     def process_file(self):
         print("Preprocessing input")
         input_path = self.input_path
-        root, extension = os.path.splitext(input_path)
+        mode = get_file_type(input_path)
 
         frame_rate = None
-
-        if extension in self.IMAGE_EXTENSIONS:
-            mode = 'image'
-        elif extension in self.VIDEO_EXTENSIONS:
-            mode = 'video'
-        else:
-            raise ValueError("Input file is not a valid image or video extension")
 
         frame_list_gray = []
         frame_list_color = []
@@ -50,12 +45,13 @@ class Preprocessor:
                 resized_frame = resize_frame(frame, self.max_dim)
                 padded_frame = pad_frame(resized_frame, self.patch_size)
                 gray_frame = cv2.cvtColor(padded_frame, cv2.COLOR_BGR2GRAY)
+                denoised_frame = denoise_frame(gray_frame) if self.denoise else gray_frame
 
                 # Save frames
                 frame_list_color.append(padded_frame)
-                frame_list_gray.append(gray_frame)
+                frame_list_gray.append(denoised_frame)
 
-        else:
+        elif mode == 'image':
 
             # Open image
             frame = cv2.imread(input_path)
@@ -66,13 +62,36 @@ class Preprocessor:
             resized_frame = resize_frame(frame, self.max_dim)
             padded_frame = pad_frame(resized_frame, self.patch_size)
             gray_frame = cv2.cvtColor(padded_frame, cv2.COLOR_BGR2GRAY)
+            denoised_frame = denoise_frame(gray_frame)
 
             # Save frame
             frame_list_color.append(padded_frame)
-            frame_list_gray.append(gray_frame)
+            frame_list_gray.append(denoised_frame)
+
+        else:
+            raise ValueError(f"Cannot process file {input_path}. Invalid file type.")
 
         print("Preprocessing complete")
         return frame_list_gray, frame_list_color, frame_rate
+
+@GlobalTimer.time
+def smooth_frames(frame_list, alpha=0.6):
+
+    accumulator = None
+    processed_frame_list = []
+    for frame in frame_list:
+
+        if accumulator is None:
+            accumulator = frame.astype(np.float32)
+            processed_frame_list.append(frame)
+            continue
+
+        current = frame.astype(np.float32)
+        cv2.accumulateWeighted(current, accumulator, alpha)
+        processed_frame_list.append(accumulator.astype(np.uint8))
+
+    return processed_frame_list
+
 
 @GlobalTimer.time
 def resize_frame(frame, max_dim):
@@ -111,4 +130,14 @@ def pad_frame(frame, patch_size):
         frame = np.pad(frame, ((0, pad_bottom), (0, pad_right)), mode='constant', constant_values=0)
 
     return frame
+
+@GlobalTimer.time
+def denoise_frame(frame, d=5, sigmaColor=75, sigmaSpace=75):
+    if frame.dtype != np.uint8:
+        frame_uint8 = (frame * 255).astype(np.uint8)
+        denoised = cv2.bilateralFilter(frame_uint8, d, sigmaColor, sigmaSpace)
+        return denoised.astype(np.float32) / 255.0
+
+    return cv2.bilateralFilter(frame, d, sigmaColor, sigmaSpace)
+
 

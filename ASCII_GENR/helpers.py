@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import time
 import functools
+import os
+from performance import GlobalTimer
+import subprocess
 
 def calcCentroids(img):
     moments = cv2.moments(img)
@@ -56,5 +59,47 @@ def NCC(img1, img2):
     correlation = np.dot(v1, v2) / (norm1 * norm2)
 
     return correlation
+
+@GlobalTimer.time
+def evaluate(input_path):
+
+    filetype = get_file_type(input_path)
+    if filetype == 'image':
+        command = ["python", "evaluation/evaluation.py", input_path, "output/ascii_image_output.png"]
+    elif filetype == 'video':
+        command = ["python", "evaluation/evaluation.py", input_path, "output/ascii_video_output.mp4", "--video"]
+    else:
+        print(f"[ERROR] Cannot run evaluation on {input_path}. Invalid file type.")
+        raise ValueError()
+
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1
+    )
+
+    for line in process.stdout:
+        print(line, end='')
+
+    return_code = process.wait()
+
+    if return_code != 0:
+        print(f"[ERROR]: Evaluation failed with return code {return_code}")
+        print(process.stderr.read())
+
+def get_file_type(file_path):
+    IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'}
+    VIDEO_EXTENSIONS = {'.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'}
+
+    root, extension = os.path.splitext(file_path)
+
+    if extension in IMAGE_EXTENSIONS:
+        return 'image'
+    elif extension in VIDEO_EXTENSIONS:
+        return 'video'
+    else:
+        return None
 
 

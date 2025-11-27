@@ -3,13 +3,14 @@ import numpy as np
 import time
 import os
 from performance import GlobalTimer
+import string
 
 # Project imports
 from filters import difference_of_gaussians, sobel_edge_detection_shader_style, quantize_edge_direction
 from tiling import tile_based_edge_consensus
 from template_match import matchTemplates
 from renderer import render_ascii_to_image, write_video_from_tensor
-from preprocessing import Preprocessor
+from preprocessing import Preprocessor, smooth_frames
 from template_gen import TemplateGenerator
 
 class ASCIIConverter:
@@ -31,8 +32,15 @@ class ASCIIConverter:
                  verbose=True,
                  font_size=8,
                  font_file=None,
+                 max_dim=1600,
                  template_matching=True,
-                 char_set=" .*:o&8?"):
+                 temporal_smoothing=True,
+                 smoothing_alpha=0.6,
+                 denoise=True,
+                 luminance_char_set=" .*:o&8?@█",   # must be ordered least-bright to most-bright
+                 template_char_set=" .*:o?|/\\-"
+                 #template_char_set=string.printable[0:95]
+                 ):
 
         # Core Input/Output
         self.input_path = input_path
@@ -56,7 +64,6 @@ class ASCIIConverter:
         self.no_edges = no_edges
         self.no_fill = no_fill
         self.debug_mode = debug_mode
-        print(f"Debug mode: {debug_mode}")
         self.parallel = parallel
         self.verbose = verbose
         self.template_matching = template_matching
@@ -64,7 +71,9 @@ class ASCIIConverter:
         # Render settings
         self.font_size = font_size
         self.font_file = font_file
-        self.char_set = char_set # only for non-edges, no duplicates allowed
+        self.max_dim = max_dim
+        self.luminance_char_set = luminance_char_set # only for non-edges, no duplicates allowed
+        self.template_char_set = template_char_set
 
         # Performance measurements
         self.timings = {}
@@ -73,10 +82,23 @@ class ASCIIConverter:
         self.template_library = None
         self.template_centroids = None
 
+        # Temporal smoothing
+        self.temporal_smoothing = temporal_smoothing
+        self.smoothing_alpha = smoothing_alpha
+        self.denoise = denoise
+
     def run(self):
         # Initialize preprocessor
-        preprocessor = Preprocessor(self.input_path, patch_size=self.patch_size)
-        frame_list_gray, frame_list_color, framerate = preprocessor.process_file()
+        preprocessor = Preprocessor(self.input_path, patch_size=self.patch_size, max_dim=self.max_dim, denoise=self.denoise)
+        try:
+            frame_list_gray, frame_list_color, framerate = preprocessor.process_file()
+        except Exception as e:
+            print(e)
+            exit()
+
+        # Input smoothing (reduces flickering)
+        if self.temporal_smoothing:
+            frame_list_gray = smooth_frames(frame_list_gray, self.smoothing_alpha)
 
         # Generate ASCII template images
         generator = TemplateGenerator(
@@ -84,7 +106,7 @@ class ASCIIConverter:
             patch_h=self.patch_size,
             font_size=self.font_size,
             font_file=self.font_file,
-            char_set=self.char_set
+            char_set=set(self.luminance_char_set + self.template_char_set)
         )
         self.template_library, self.template_centroids = generator.generate()
 
@@ -99,8 +121,8 @@ class ASCIIConverter:
 
             # Render Image
             color_data = frame_list_color[0] if self.color_mode else None
-            render_ascii_to_image(ascii_array, self.template_library, color_array=color_data, output_path="output/output_image.png")
-            print("Saved output/output_image.png")
+            render_ascii_to_image(ascii_array, self.template_library, color_array=color_data, output_path="output/ascii_image_output.png")
+            print("Saved output/ascii_image_output.png")
 
             if debug_images is not None:
                 d_dog, d_sobel, d_dir, d_tile, ne_array, e_array = debug_images
@@ -108,6 +130,7 @@ class ASCIIConverter:
                 cv2.imwrite(f"output/debug_sobel.png", d_sobel)
                 cv2.imwrite(f"output/debug_directions.png", d_dir)
                 cv2.imwrite(f"output/debug_tiles.png", d_tile)
+                cv2.imwrite(f"output/debug_preprocessed.png", frame_list_gray[0])
 
                 render_ascii_to_image(ne_array, self.template_library, color_array=color_data, output_path="output/debug_noedge.png")
                 render_ascii_to_image(e_array, self.template_library, color_array=color_data, output_path="output/debug_edge.png")
@@ -148,9 +171,14 @@ class ASCIIConverter:
                     if len(d_dog.shape) == 2: d_dog = d_dog[:, :, np.newaxis]
                     if len(d_sobel.shape) == 2: d_sobel = d_sobel[:, :, np.newaxis]
 
-                    # Convert ascii arrays to raster images (and cast to add channel dimension)
-                    noedge_frame = render_ascii_to_image(ne_array, self.template_library, color_array=color_data, write_to_file=False)[:, :, np.newaxis]
-                    edge_frame = render_ascii_to_image(e_array, self.template_library, color_array=color_data, write_to_file=False)[:, :, np.newaxis]
+                    # Convert ascii arrays to raster images
+                    noedge_frame = render_ascii_to_image(ne_array, self.template_library, color_array=color_data, write_to_file=False)
+                    edge_frame = render_ascii_to_image(e_array, self.template_library, color_array=color_data, write_to_file=False)
+
+                    # Add color dimension if it does not exist
+                    if not self.color_mode:
+                        noedge_frame = noedge_frame[:, :, np.newaxis]
+                        edge_frame = edge_frame[:, :, np.newaxis]
 
                     debug_lists["dog"].append(d_dog)
                     debug_lists["sobel"].append(d_sobel)
@@ -164,8 +192,9 @@ class ASCIIConverter:
 
             # Stack frames into tensor (T, H, W, C)
             if ascii_raster_list:
-                ascii_video_array = np.stack(ascii_raster_list, axis=0)
-                ascii_video_array = ascii_video_array[:, :, :, np.newaxis]
+                ascii_video_array = np.stack(ascii_raster_list, axis=0) # Stack along time
+                if not self.color_mode:
+                    ascii_video_array = ascii_video_array[:, :, :, np.newaxis] # add a color channel if there isn't one already
 
                 # Write video file
                 output_video_path = "output/ascii_video_output.mp4"
@@ -178,6 +207,10 @@ class ASCIIConverter:
                     if frames:
                         tensor = np.stack(frames, axis=0)
                         write_video_from_tensor(tensor, f"output/debug_{name}.mp4", fps=framerate)
+
+                # Pre-processed video
+                tensor = np.stack(frame_list_gray, axis=0)[:, :, :, np.newaxis]
+                write_video_from_tensor(tensor, f"output/debug_preprocessed.mp4", fps=framerate)
 
     def _frameToAscii(self, frame):
         """
@@ -237,17 +270,20 @@ class ASCIIConverter:
         no_edge_mask = tile_directions_sampled == -1
 
         if not self.no_fill:
+
+            # Use template matching to fill non-edge patches
             if self.template_matching:
                 noedge_ascii_array, _ = matchTemplates(
                     frame,
                     no_edge_mask,
                     self.template_library,
                     self.template_centroids,
-                    self.char_set
+                    self.template_char_set
                 )
+            # Use luminance matching to fill non-edge patches
             else:
                 # Luminance characters (10 levels, darkest to lightest)
-                luminance_chars = self.char_set
+                luminance_chars = self.luminance_char_set
 
                 luminance_downscaled = cv2.resize(
                     frame, (tile_cols, tile_rows), interpolation=cv2.INTER_AREA
