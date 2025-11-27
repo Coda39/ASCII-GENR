@@ -10,7 +10,7 @@ from filters import difference_of_gaussians, sobel_edge_detection_shader_style, 
 from tiling import tile_based_edge_consensus
 from template_match import matchTemplates
 from renderer import render_ascii_to_image, write_video_from_tensor
-from preprocessing import Preprocessor, smooth_frames
+from preprocessing import Preprocessor, smooth_frames, denoise_frame
 from template_gen import TemplateGenerator
 
 class ASCIIConverter:
@@ -89,7 +89,7 @@ class ASCIIConverter:
 
     def run(self):
         # Initialize preprocessor
-        preprocessor = Preprocessor(self.input_path, patch_size=self.patch_size, max_dim=self.max_dim, denoise=self.denoise)
+        preprocessor = Preprocessor(self.input_path, patch_size=self.patch_size, max_dim=self.max_dim)
         try:
             frame_list_gray, frame_list_color, framerate = preprocessor.process_file()
         except Exception as e:
@@ -268,6 +268,9 @@ class ASCIIConverter:
 
         # Populate a completely disjoint array with template matched characters
         no_edge_mask = tile_directions_sampled == -1
+
+        # Denoise after edge detection to reduce flickering and smooth out flat surfaces without destroying edge structure
+        frame = denoise_frame(frame) if self.denoise else frame
 
         if not self.no_fill:
 

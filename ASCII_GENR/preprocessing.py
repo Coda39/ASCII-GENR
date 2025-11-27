@@ -10,9 +10,6 @@ class Preprocessor:
         self.patch_size = patch_size
         self.input_path = input_path
 
-        # For input smoothing
-        self.denoise = denoise
-
     @GlobalTimer.time
     def process_file(self):
         print("Preprocessing input")
@@ -45,11 +42,10 @@ class Preprocessor:
                 resized_frame = resize_frame(frame, self.max_dim)
                 padded_frame = pad_frame(resized_frame, self.patch_size)
                 gray_frame = cv2.cvtColor(padded_frame, cv2.COLOR_BGR2GRAY)
-                denoised_frame = denoise_frame(gray_frame) if self.denoise else gray_frame
 
                 # Save frames
                 frame_list_color.append(padded_frame)
-                frame_list_gray.append(denoised_frame)
+                frame_list_gray.append(gray_frame)
 
         elif mode == 'image':
 
@@ -62,11 +58,10 @@ class Preprocessor:
             resized_frame = resize_frame(frame, self.max_dim)
             padded_frame = pad_frame(resized_frame, self.patch_size)
             gray_frame = cv2.cvtColor(padded_frame, cv2.COLOR_BGR2GRAY)
-            denoised_frame = denoise_frame(gray_frame)
 
             # Save frame
             frame_list_color.append(padded_frame)
-            frame_list_gray.append(denoised_frame)
+            frame_list_gray.append(gray_frame)
 
         else:
             raise ValueError(f"Cannot process file {input_path}. Invalid file type.")

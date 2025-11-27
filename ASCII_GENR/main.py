@@ -47,9 +47,9 @@ def main():
         font_file=args.font_file,
         max_dim=args.max_dim,
         template_matching=args.template_mode,
-        temporal_smoothing=False,
+        temporal_smoothing=True,
         smoothing_alpha=0.6,
-        denoise=False
+        denoise=True
     )
 
     conv.run()
