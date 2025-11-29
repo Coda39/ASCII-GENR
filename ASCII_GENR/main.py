@@ -1,4 +1,5 @@
 import argparse
+from html import parser
 from ASCIIConverter import ASCIIConverter
 from performance import GlobalTimer
 from helpers import evaluate
