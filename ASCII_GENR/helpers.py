@@ -60,7 +60,6 @@ def NCC(img1, img2):
 
     return correlation
 
-@GlobalTimer.time
 def evaluate(input_path):
 
     filetype = get_file_type(input_path)
