@@ -16,7 +16,7 @@ def main():
     parser.add_argument("--evaluate", action="store_true", help="Run evaluation metrics on results")
     parser.add_argument("--font-size", type=int, default=8, help="Font size for rendered image")
     parser.add_argument("--font-file", help="Font size for rendered image")
-    parser.add_argument("--max-dim", default=1600, help="Sets the maximum dimension for both height and width. Input will be resized before processing.")
+    parser.add_argument("--max-dim", type=int, default=1600, help="Sets the maximum dimension for both height and width. Input will be resized before processing.")
     parser.add_argument("--template-mode", action="store_true", help="Use template matching to fill non-edges instead of luminance values")
     args = parser.parse_args()
 
