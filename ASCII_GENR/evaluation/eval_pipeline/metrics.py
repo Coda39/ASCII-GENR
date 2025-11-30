@@ -173,12 +173,19 @@ def detail_retention_index(
     patch_size: int = 16,
     eps: float = 1e-8,
 ) -> float:
-    """Compute Detail Retention Index (DRI) via local variance ratio.
+    """Compute Detail Retention Index (DRI) via normalized variance similarity.
 
-    DRI = sum(patch_variance_ascii) / (sum(patch_variance_original) + eps)
+    Measures how similar the variance distributions are between original and ASCII images.
+    Uses normalized MSE on variance maps, converted to a similarity score in [0, 1].
     
-    Values close to 1.0 indicate equal detail/variance. Values > 1.0 suggest the ASCII
-    version has more local variation (often due to character patterns).
+    Formula: DRI = max(0, 1 - sqrt(MSE))
+    
+    Values in [0, 1] where:
+    - 1.0 = identical variance distribution (MSE=0)
+    - 0.5 = moderate similarity (MSE=0.25)
+    - 0.0 = very different (MSE≥1)
+    
+    Taking sqrt of MSE makes the metric more sensitive to differences.
     
     Args:
         original: Original image (path or array)
@@ -187,7 +194,7 @@ def detail_retention_index(
         eps: Small constant to avoid division by zero
     
     Returns:
-        Float >= 0, typically in range [0, 5] for ASCII art
+        Float in [0, 1] where higher values indicate better detail retention
     """
     a = _to_gray(original)
     b = _to_gray(ascii_img)
@@ -206,12 +213,25 @@ def detail_retention_index(
     b_patches = b_patches.swapaxes(1, 2).reshape(-1, patch_size, patch_size)
     var_a = np.array([p.var() for p in a_patches])
     var_b = np.array([p.var() for p in b_patches])
-    total_a = var_a.sum()
-    total_b = var_b.sum()
-    if total_a == 0:
-        # if no variance in original, define DRI as 1.0 when ascii also flat
-        return 1.0 if total_b == 0 else 0.0
-    return float(total_b / (total_a + eps))
+    
+    # Normalize both variance maps to [0, 1] for fair comparison
+    if var_a.max() > 0:
+        var_a_norm = var_a / var_a.max()
+    else:
+        var_a_norm = var_a
+        
+    if var_b.max() > 0:
+        var_b_norm = var_b / var_b.max()
+    else:
+        var_b_norm = var_b
+    
+    # Compute normalized MSE
+    mse = np.mean((var_a_norm - var_b_norm) ** 2)
+    
+    # Convert MSE to similarity score: 1 - sqrt(MSE)
+    # sqrt makes it more sensitive to differences
+    dri = max(0.0, 1.0 - np.sqrt(mse))
+    return float(dri)
 
 
 def read_video_frames(path: str, max_frames: Optional[int] = None) -> List[np.ndarray]:

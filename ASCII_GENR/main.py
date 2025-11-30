@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--font-file", help="Font size for rendered image")
     parser.add_argument("--max-dim", type=int, default=1600, help="Sets the maximum dimension for both height and width. Input will be resized before processing.")
     parser.add_argument("--template-mode", action="store_true", help="Use template matching to fill non-edges instead of luminance values")
+    parser.add_argument("--no-smoothing", action="store_true", help="Disable temporal smoothing")
+    parser.add_argument("--no-denoising", action="store_true", help="Disable denoising")
     args = parser.parse_args()
 
     # Create ASCIIConverter
@@ -48,9 +50,9 @@ def main():
         font_file=args.font_file,
         max_dim=args.max_dim,
         template_matching=args.template_mode,
-        temporal_smoothing=True,
+        temporal_smoothing=not args.no_smoothing,
         smoothing_alpha=0.6,
-        denoise=True
+        denoise=not args.no_denoising
     )
 
     conv.run()
